@@ -1,0 +1,21 @@
+# Normalize line endings
+* text=auto
+
+# Shell scripts must stay LF (Linux CI runners)
+*.sh text eol=lf
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# Gradle build files - normalize to LF
+*.gradle text eol=lf
+gradle.properties text eol=lf
+
+# Binary files must not be modified
+*.jar binary
+*.png binary
+*.webp binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.jks binary
+*.keystore binary
