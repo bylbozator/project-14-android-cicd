@@ -176,7 +176,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
         JFROG_SG_ID: ${{ secrets.JFROG_SG_ID }}
-      if: always() && ${{ env.JFROG_SG_ID != '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' }}
+      if: always() && env.JFROG_SG_ID != '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
       
     - name : Notification to Teams
       if: ${{ env.MS_TEAMS_WEBHOOK_URI != '' && env.CI_GITHUB_TOKEN != '' }}
