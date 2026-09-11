@@ -124,7 +124,7 @@ jobs:
       
     - name: Public IP of Github Hosted Runner
       id: ip
-      uses: haythem/public-ip@v1.3
+      run: echo "ipv4=$(curl -4 -sS https://api.ipify.org)" >> "$GITHUB_OUTPUT"
       
     
     - name: Add Github Actions IP to Security group
