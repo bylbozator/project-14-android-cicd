@@ -43,7 +43,7 @@ jobs:
       run: ./gradlew build
          
     - name: Code Coverage test - Jacoco
-      run: ./gradlew jacocoTest
+      run: ./gradlew testDevDebugUnitTest
       
     - name: Cache SonarQube packages
       uses: actions/cache@v4
@@ -61,6 +61,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle
           
     - name: Code Scan Analysis - SonarQube
+      if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
       env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -74,11 +75,9 @@ jobs:
       run: |
          mkdir -p apk-files/debug apk-files/release
          
-         cp ${{ github.workspace }}/app/build/outputs/apk/debug/app-debug.apk ${{ github.workspace }}/apk-files/debug/app-debug.apk 
-         mv ${{ github.workspace }}/apk-files/debug/app-debug.apk ${{ github.workspace }}/apk-files/debug/app-debug-${{ steps.date.outputs.current_date_time }}.apk
+         cp ${{ github.workspace }}/app/build/outputs/apk/dev/debug/app-dev-debug.apk ${{ github.workspace }}/apk-files/debug/app-debug-${{ steps.date.outputs.current_date_time }}.apk
          
-         cp ${{ github.workspace }}/app/build/outputs/apk/release/app-release-unsigned.apk ${{ github.workspace }}/apk-files/release/app-release-unsigned.apk
-         mv ${{ github.workspace }}/apk-files/release/app-release-unsigned.apk ${{ github.workspace }}/apk-files/release/app-release-unsigned-${{ steps.date.outputs.current_date_time }}.apk
+         cp ${{ github.workspace }}/app/build/outputs/apk/dev/release/app-dev-release-unsigned.apk ${{ github.workspace }}/apk-files/release/app-release-unsigned-${{ steps.date.outputs.current_date_time }}.apk
       
     - name: Upload apk-files Directory
       uses: actions/upload-artifact@v4
@@ -89,7 +88,7 @@ jobs:
       
     - name : Notification to Teams
       uses: toko-bifrost/ms-teams-deploy-card@master #  or "./" if in a local set-up
-      if: always()
+      if: always() && secrets.MS_TEAMS_WEBHOOK_URI != '' && secrets.CI_GITHUB_TOKEN != ''
       with:
           github-token: ${{ secrets.CI_GITHUB_TOKEN  }}
           webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
@@ -168,7 +167,7 @@ jobs:
       
     - name : Notification to Teams
       uses: toko-bifrost/ms-teams-deploy-card@master #  or "./" if in a local set-up
-      if: always()
+      if: always() && secrets.MS_TEAMS_WEBHOOK_URI != '' && secrets.CI_GITHUB_TOKEN != ''
       with:
           github-token: ${{ secrets.CI_GITHUB_TOKEN  }}
           webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
