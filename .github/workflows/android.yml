@@ -86,19 +86,17 @@ jobs:
         path: ${{ github.workspace }}/apk-files/
         if-no-files-found: ignore
       
-    - name : Check Teams notification secrets
-      id: teams_check
+    - name : Notification to Teams
+      if: ${{ env.MS_TEAMS_WEBHOOK_URI != '' && env.CI_GITHUB_TOKEN != '' }}
       env:
           MS_TEAMS_WEBHOOK_URI: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
           CI_GITHUB_TOKEN: ${{ secrets.CI_GITHUB_TOKEN }}
-      run: echo "enabled=$( [ -n \"$MS_TEAMS_WEBHOOK_URI\" ] && [ -n \"$CI_GITHUB_TOKEN\" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
-
-    - name : Notification to Teams
-      uses: toko-bifrost/ms-teams-deploy-card@master #  or "./" if in a local set-up
-      if: ${{ steps.teams_check.outputs.enabled == 'true' }}
-      with:
-          github-token: ${{ secrets.CI_GITHUB_TOKEN  }}
-          webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
+      run: |
+          curl -sS \
+            -H "Content-Type: application/json" \
+            -H "Authorization: bearer $CI_GITHUB_TOKEN" \
+            -d '{"text":"Android CI/CD run <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}> for commit `${{ github.sha }}` completed."}' \
+            "$MS_TEAMS_WEBHOOK_URI" || echo "Teams notification skipped (webhook unreachable)"
     outputs:
         CURRENT_DATE_TIME: ${{ steps.date.outputs.current_date_time }}
 
@@ -172,16 +170,14 @@ jobs:
         AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
       if: always()
       
-    - name : Check Teams notification secrets
-      id: teams_check_deploy
+    - name : Notification to Teams
+      if: ${{ env.MS_TEAMS_WEBHOOK_URI != '' && env.CI_GITHUB_TOKEN != '' }}
       env:
           MS_TEAMS_WEBHOOK_URI: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
           CI_GITHUB_TOKEN: ${{ secrets.CI_GITHUB_TOKEN }}
-      run: echo "enabled=$( [ -n \"$MS_TEAMS_WEBHOOK_URI\" ] && [ -n \"$CI_GITHUB_TOKEN\" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
-
-    - name : Notification to Teams
-      uses: toko-bifrost/ms-teams-deploy-card@master #  or "./" if in a local set-up
-      if: ${{ steps.teams_check_deploy.outputs.enabled == 'true' }}
-      with:
-          github-token: ${{ secrets.CI_GITHUB_TOKEN  }}
-          webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
+      run: |
+          curl -sS \
+            -H "Content-Type: application/json" \
+            -H "Authorization: bearer $CI_GITHUB_TOKEN" \
+            -d '{"text":"Android CD deploy <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}> for commit `${{ github.sha }}` completed."}' \
+            "$MS_TEAMS_WEBHOOK_URI" || echo "Teams notification skipped (webhook unreachable)"
