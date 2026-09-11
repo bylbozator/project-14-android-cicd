@@ -1,88 +1,104 @@
-# Android CI/CD with GitHub Actions (Project 14)
+# Android CI/CD с GitHub Actions (Project 14)
 
-End-to-end CI/CD pipeline for an Android application using GitHub Actions.
+Сквозной CI/CD-пайплайн для Android-приложения на GitHub Actions.
 
-This project contains a multi-module Android demo app (`app`, `first`, `second`)
-and three GitHub Actions workflows that build, test, scan and deploy it.
+Мультимодульное Android-демо (`app`, `first`, `second`) и три workflow,
+которые собирают, тестируют, сканируют и разворачивают приложение.
 
-## Repository layout
+## Структура репозитория
 
 ```
 .
 ├── .github/workflows/
-│   ├── android.yml          # Main build + deploy pipeline
-│   ├── clear-caches.yml     # Clears GH Actions caches after a run
-│   └── delete-artifacts.yml # Scheduled cleanup of build artifacts
-├── app/                     # Main Android application module
-├── first/                   # Library module (AAR)
-├── second/                  # Library module (AAR)
-├── scripts/                 # Shared Gradle task definitions
-├── build.gradle             # Root Gradle build (AGP + Kotlin + SonarQube)
+│   ├── android.yml          # Основной пайплайн: сборка + deploy
+│   ├── clear-caches.yml     # Очистка кэша Actions после прогона
+│   └── delete-artifacts.yml # Плановая очистка артефактов сборки
+├── app/                     # Основной модуль приложения
+├── first/                   # Библиотечный модуль (AAR)
+├── second/                  # Библиотечный модуль (AAR)
+├── scripts/                 # Общие Gradle-задачи
+├── build.gradle             # Корневой Gradle-файл (AGP + Kotlin + SonarQube)
 ├── settings.gradle
 ├── gradle/wrapper/          # Gradle wrapper
-└── gradlew / gradlew.bat    # Gradle wrapper scripts
+└── gradlew / gradlew.bat    # Скрипты Gradle wrapper
 ```
 
-## The CI/CD pipeline (`android.yml`)
+## Пайплайн (`android.yml`)
 
-The workflow triggers on `push` to `main`, `qa`, `develop`, and on
-`pull_request` into `main` and `qa`. It has two jobs:
+Workflow запускается при `push` в `main`, `qa`, `develop` и при
+`pull_request` в `main` и `qa`. Состоит из двух джоб:
 
-### Job 1: `build`
-Runs on `ubuntu-latest` with **JDK 11**:
+### Джоба 1: `build`
 
-1. Checkout the repository
-2. Set up JDK 11 (Temurin) with Gradle caching
-3. `./gradlew clean` — clean build outputs
-4. `./gradlew lint` — static analysis (Android Lint)
-5. `./gradlew build` — compile + assemble APKs (debug/release, dev/prod flavors)
-6. `./gradlew jacocoTest` — code coverage via JaCoCo
-7. SonarQube scan (`./gradlew sonarqube`) for code quality (needs `SONAR_TOKEN` + `SONAR_HOST_URL`)
-8. Date-stamp the output APKs, zip them and upload them as a **GitHub Actions artifact** (`apk-files-artifactory`)
-9. Send a status notification to a **Microsoft Teams** channel via webhook
+Выполняется на `ubuntu-latest` с **JDK 11**:
 
-### Job 2: `deploy`
-Runs after `build` succeeds, only on `qa` and `master` branches:
+1. Checkout репозитория
+2. Установка JDK 11 (Temurin) с кэшированием Gradle
+3. `./gradlew clean` — очистка результатов сборки
+4. `./gradlew lint` — статический анализ (Android Lint)
+5. `./gradlew build` — компиляция и сборка APK (debug/release, flavors dev/prod)
+6. `./gradlew testDevDebugUnitTest` — юнит-тесты с покрытием (JaCoCo)
+7. Сканирование SonarQube (`./gradlew sonarqube`) — только если заданы
+   `SONAR_TOKEN` и `SONAR_HOST_URL`
+8. Файлы APK получают отметку времени и загружаются как **артефакт**
+   (`apk-files-artifactory`)
+9. Уведомление в **Microsoft Teams** через webhook — только если заданы
+   `MS_TEAMS_WEBHOOK_URI` и `CI_GITHUB_TOKEN`
 
-1. Download the `apk-files-artifactory` artifact
-2. Get the runner's public IP and temporarily open the **port 8082** of an
-   **AWS security group** (for the runner to reach JFrog)
-3. Configure the **JFrog CLI** (Artifactory)
-4. Upload the debug/release APKs to a JFrog repository (`android-artifact/`)
-5. Remove the runner IP from the security group (cleanup, always runs)
-6. Send a Teams notification
+### Джоба 2: `deploy`
 
-## Required repository secrets
+Запускается после успешной `build`, и только на ветках `qa` и `master`:
 
-| Secret | Purpose |
-|--------|---------|
-| `SONAR_TOKEN` | Token for SonarQube server (build job) |
-| `SONAR_HOST_URL` | URL of the SonarQube server (build job) |
-| `CI_GITHUB_TOKEN` | GitHub token used by the Teams notification action (build + deploy) |
-| `MS_TEAMS_WEBHOOK_URI` | Webhook URL for Teams notifications (build + deploy) |
-| `JF_URL` | JFrog platform URL (deploy job) |
-| `JF_ACCESS_TOKEN` | JFrog access token (deploy job) |
-| `JF_USER` | JFrog username (deploy job) |
-| `JF_PASSWORD` | JFrog password (deploy job) |
-| `JFROG_SG_ID` | AWS security group ID to open for the runner (deploy job) |
-| `AWS_ACCESS_KEY_ID` | AWS credentials (deploy job) |
-| `AWS_SECRET_ACCESS_KEY` | AWS credentials (deploy job) |
+1. Скачивание артефакта `apk-files-artifactory`
+2. Получение публичного IP раннера и временное открытие **порта 8082**
+   в **AWS security group** (чтобы раннер мог достучаться до JFrog)
+3. Настройка **JFrog CLI** (Artifactory)
+4. Загрузка debug/release APK в репозиторий JFrog (`android-artifact/`)
+5. Удаление IP раннера из security group (очистка, выполняется всегда)
+6. Уведомление в Teams
 
-## Add secrets to the repository
+> Шаги deploy, работающие с внешними сервисами (AWS/JFrog/Teams), пропускаются,
+> пока соответствующие секреты не настроены — пайплайн остаётся зелёным, а CD
+> включается автоматически после добавления credentials.
 
-GitHub page: **Settings → Secrets and variables → Actions → New repository secret**
+## Требуемые секреты репозитория
 
-## Build locally
+| Секрет | Назначение |
+|--------|------------|
+| `SONAR_TOKEN` | Токен для SonarQube (джоба build) |
+| `SONAR_HOST_URL` | URL SonarQube-сервера (джоба build) |
+| `CI_GITHUB_TOKEN` | GitHub-токен для уведомлений Teams (build + deploy) |
+| `MS_TEAMS_WEBHOOK_URI` | Webhook для уведомлений в Teams (build + deploy) |
+| `JF_URL` | URL платформы JFrog (джоба deploy) |
+| `JF_ACCESS_TOKEN` | Access-токен JFrog (джоба deploy) |
+| `JF_USER` | Логин JFrog (джоба deploy) |
+| `JF_PASSWORD` | Пароль JFrog (джоба deploy) |
+| `JFROG_SG_ID` | ID AWS security group для открытия порта (джоба deploy) |
+| `AWS_ACCESS_KEY_ID` | Ключи AWS (джоба deploy) |
+| `AWS_SECRET_ACCESS_KEY` | Ключи AWS (джоба deploy) |
+
+## Как добавить секреты
+
+GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+
+## Локальная сборка
 
 ```bash
 ./gradlew clean build        # Linux / macOS
 .\gradlew.bat clean build    # Windows
 ```
 
-Prerequisites locally: JDK 11+ and an Android SDK with `platform 30` and
-`build-tools 30.0.3` (set via `local.properties` / `ANDROID_HOME`).
+Локальные требования: JDK 11+ и Android SDK с `platform 30` и
+`build-tools 30.0.3` (задаются через `local.properties` / `ANDROID_HOME`).
 
-> `local.properties` is machine-specific and must **not** be committed.
+> `local.properties` привязан к машине и **не должен** попадать в git.
+
+## Замечания по версиям
+
+- Используется **Gradle 7.0.2** — это версия, совместимая с
+  AGP `7.0.0-beta04` проекта (Gradle 8.x вызывает ошибки на этапе lint).
+- В репозиторий добавлен `gradle/wrapper/gradle-wrapper.jar` (в исходном
+  проекте отсутствовал).
 
 ---
-Based on [DevOps-Projects · Project 14](https://github.com/DevCloudNinjas/DevOps-Projects/tree/master/project-14-github-actions-android).
+На основе [DevOps-Projects · Project 14](https://github.com/DevCloudNinjas/DevOps-Projects/tree/master/project-14-github-actions-android).
